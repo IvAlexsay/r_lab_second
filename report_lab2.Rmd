@@ -1,0 +1,89 @@
+---
+title: "report_lab2"
+output: html_document
+date: "2023-01-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Task 9
+Используйте файл RH_T.csv Найдите самые холодные выходные в Екатеринбурге (Средняя температура в течение выходных минимальна).
+```{r}
+df <- read.csv(file = "RH_T.csv")
+
+weekends <- data.frame(YYYYMMDD1 = double(), 
+                         YYYYMMDD2 = double(),
+                         MT = double())
+  
+  
+#2020 год начался со среды 
+for(i in 1:366){
+  if(i %% 7 == 4){
+    weekends[nrow(weekends)+1, ] = c(df[i,]$YYYYMMDD, df[i+1,]$YYYYMMDD, 
+                                     mean(c(df[i, ]$T2M, df[i+1, ]$T2M)))
+  }
+}
+
+coldest <- weekends[which.min(weekends$MT), ] 
+
+res <- subset(df, YYYYMMDD == coldest$YYYYMMDD1 | YYYYMMDD == coldest$YYYYMMDD2)
+
+head(res)
+```
+
+## Task 24
+Используйте файл Payment_and_value_of_Care-Hospital.csv На основе имеющихся данных создайте dataframe, агрегирующий информацию о количестве больниц в городах США. Dataframe должен содержать 5 колонок: название штата, название округа, название города, количество больниц в этом городе и количество больниц в которых осуществляется экстренная медицинская помощь.
+```{r}
+df <- read.csv('Payment_and_Value_of_Care-Hospital.csv')
+
+df_only_with_emergency <- subset(df, df$Payment.Measure.Name == 'Payment for heart attack patients' |
+                      df$Payment.Measure.Name == 'Payment for heart failure patients')
+
+df_only_with_emergency <- subset(df_only_with_emergency, df_only_with_emergency$Payment.Category != 'Not Available')
+
+hospitals <- subset(df, select = c('State',
+                                   'County.Name',
+                                   'City', 
+                                   'Facility.Name'
+                                   ))
+hospitals <- unique(hospitals)
+
+
+hospitals_only_with_emergency <- subset(df_only_with_emergency, 
+                                        select = c('State',
+                                                   'County.Name',
+                                                   'City',
+                                                   'Facility.Name'
+                                                   ))
+
+hospitals_only_with_emergency <- unique(hospitals_only_with_emergency)
+
+
+hospitals <- aggregate(hospitals$Facility.Name, 
+               by = list(
+                  State = hospitals$State,
+                  County = hospitals$County.Name,
+                  City = hospitals$City), 
+               FUN = length)
+
+colnames(hospitals) <- c('State', 'Country', 'City', 'Count hospitals')
+
+hospitals_only_with_emergency <- aggregate(hospitals_only_with_emergency$Facility.Name, 
+                                 by = list(
+                                   State = hospitals_only_with_emergency$State,
+                                   County = hospitals_only_with_emergency$County.Name,
+                                   City = hospitals_only_with_emergency$City), 
+                                 FUN = length)
+
+colnames(hospitals_only_with_emergency) <- c('State', 'Country', 'City', 'Count hospitals with emergency')
+
+res <- merge(hospitals, hospitals_only_with_emergency, by = c('State', 'Country', 'City'), all=TRUE)
+res[is.na(res)] <- 0
+
+knitr::kable(res, format="html")
+```
+
+
+
